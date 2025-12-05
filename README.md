@@ -9,4 +9,4 @@
 * Determine Local model type with sufficient tool calling capabilities
 * Build the whole thing
 * Train model using digital twin servers then transition to actual servers
-* Create a gui for fluid user interaction 
+* Create a GUI for fluid user interaction 
