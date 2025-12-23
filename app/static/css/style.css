@@ -1,0 +1,276 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+body {
+  background: #f4f4f4;
+  padding: 24px;
+  color: #111;
+}
+
+.main-wrapper {
+  background: #d9d9d9;
+  border-radius: 18px;
+  padding: 16px;
+  max-width: 1600px;
+  margin: auto;
+}
+
+.top-section {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.viewport {
+  background: #ffffff;
+  border-radius: 16px;
+  position: relative;
+  overflow: hidden;
+  min-height: 500px;
+}
+
+#threejs-container,
+#video-player {
+  width: 100%;
+  height: 100%;
+}
+
+.overlay-tag {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: rgba(0, 0, 0, 0.75);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  z-index: 10;
+}
+
+.sidebar {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.panel-header {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.btn-group {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  flex: 1;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 10px;
+  background: #e6e6e6;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.action-btn:hover {
+  background: #d0d0d0;
+}
+
+.action-btn.accent {
+  background: #8ec6f0;
+}
+
+.action-btn.accent:hover {
+  background: #6fb3e8;
+}
+
+.file-input {
+  margin-top: 6px;
+}
+
+.hint {
+  font-size: 12px;
+  color: #555;
+}
+
+.chatbot-area {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chat-header {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.chat-logs {
+  flex: 1;
+  background: #f2f2f2;
+  border-radius: 12px;
+  padding: 12px;
+  overflow-y: auto;
+  font-size: 14px;
+}
+
+.chat-input-row {
+  display: flex;
+  gap: 10px;
+}
+
+.chat-input-row input {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+}
+
+.chat-input-row button {
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: none;
+  background: #8ec6f0;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chat-input-row button:hover {
+  background: #6fb3e8;
+}
+
+.top-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.app-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin-right: auto;
+}
+
+.tool-icons {
+  display: flex;
+  gap: 10px;
+}
+
+.tool-btn {
+  width: 44px;
+  height: 36px;
+  background: #8ec6f0;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.tool-btn:hover {
+  background: #6fb3e8;
+}
+
+.ai-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.status-dot.idle {
+  background: #999;
+}
+
+.status-dot.running {
+  background: #4caf50;
+}
+
+.status-dot.error {
+  background: #e53935;
+}
+
+.status-text {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ai-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.ai-toggle input {
+  display: none;
+}
+
+.ai-toggle .slider {
+  width: 40px;
+  height: 20px;
+  background: #bbb;
+  border-radius: 20px;
+  position: relative;
+  transition: background 0.3s ease;
+  flex-shrink: 0;
+  box-shadow: inset 0 0 2px rgba(0,0,0,0.2);
+}
+
+.ai-toggle .slider::before {
+  content: "";
+  width: 18px;
+  height: 18px;
+  background: #fff;
+  border-radius: 50%;
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  transition: transform 0.3s ease, background 0.3s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.ai-toggle input:checked + .slider {
+  background: #4caf50;
+}
+
+.ai-toggle input:checked + .slider::before {
+  transform: translateX(20px);
+}
+
+.toggle-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+  user-select: none;
+}
+
+.mode-indicator {
+  margin-bottom: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #333;
+}
