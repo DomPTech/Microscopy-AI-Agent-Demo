@@ -9,7 +9,7 @@ class Agent:
         )
 
         self.model = model = TransformersModel(
-            model_id="Qwen/Qwen3-Next-80B-A3B-Thinking",
+            model_id="Qwen/Qwen2.5-7B-Instruct",
             max_new_tokens=4096,
             device_map="auto",
             model_kwargs={"quantization_config": quant_config}
