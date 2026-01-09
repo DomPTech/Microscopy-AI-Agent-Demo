@@ -1,5 +1,5 @@
 import torch
-from smolagents import CodeAgent, TransformersModel, DuckDuckGoSearchTool, WikipediaSearchTool
+from smolagents import CodeAgent, TransformersModel, DuckDuckGoSearchTool
 from app.tools.microscopy import adjust_magnification, capture_image, close_microscope
 from app.utils.helpers import get_total_ram_gb
 
@@ -12,6 +12,8 @@ class Agent:
             # Ultra-efficient for <16GB RAM (e.g. 8GB M-series)
             model_id = "Qwen/Qwen2.5-0.5B-Instruct"
             load_in_8bit = True if not torch.backends.mps.is_available() else False
+        elif ram_gb > 70:
+            model_id = "Qwen/Qwen3-32B-Instruct"
         else:
             # High-performance for 16GB+ RAM
             model_id = "Qwen/Qwen2.5-1.5B-Instruct" 
@@ -33,7 +35,6 @@ class Agent:
         self.agent = CodeAgent(
             tools=[
                 DuckDuckGoSearchTool(), 
-                WikipediaSearchTool(),
                 adjust_magnification,
                 capture_image,
                 close_microscope
