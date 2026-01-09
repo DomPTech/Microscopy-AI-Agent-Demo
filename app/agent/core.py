@@ -7,6 +7,7 @@ class Agent:
     def __init__(self):
         ram_gb = get_total_ram_gb()
         
+        load_in_8bit = False
         # Select model based on RAM
         if ram_gb < 16:
             # Ultra-efficient for <16GB RAM (e.g. 8GB M-series)
@@ -15,9 +16,7 @@ class Agent:
         elif ram_gb > 70:
             model_id = "Qwen/Qwen3-32B-Instruct"
         else:
-            # High-performance for 16GB+ RAM
             model_id = "Qwen/Qwen2.5-1.5B-Instruct" 
-            load_in_8bit = False
 
         self.model = TransformersModel(
             model_id=model_id,
