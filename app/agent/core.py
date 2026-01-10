@@ -4,19 +4,21 @@ from app.tools.microscopy import adjust_magnification, capture_image, close_micr
 from app.utils.helpers import get_total_ram_gb
 
 class Agent:
-    def __init__(self):
+    def __init__(self, model_id: str = "Auto"):
         ram_gb = get_total_ram_gb()
-        
         load_in_8bit = False
-        # Select model based on RAM
-        if ram_gb < 16:
-            # Ultra-efficient for <16GB RAM (e.g. 8GB M-series)
-            model_id = "Qwen/Qwen2.5-0.5B-Instruct"
-            load_in_8bit = True if not torch.backends.mps.is_available() else False
-        elif ram_gb > 70:
-            model_id = "Qwen/Qwen2.5-32B-Instruct"
-        else:
-            model_id = "Qwen/Qwen2.5-1.5B-Instruct" 
+
+        # Auto-select model based on available RAM
+        if model_id == "Auto" or not model_id:
+            if ram_gb < 16:
+                model_id = "Qwen/Qwen2.5-0.5B-Instruct"
+                # bitsandbytes 8-bit isn't stable on MPS yet
+                load_in_8bit = False if torch.backends.mps.is_available() else True
+            elif ram_gb > 48:
+                # 14B fits comfortably under 50GB (approx 28GB in FP16)
+                model_id = "Qwen/Qwen2.5-14B-Instruct" 
+            else:
+                model_id = "Qwen/Qwen2.5-7B-Instruct" # ~15GB
 
         self.model = TransformersModel(
             model_id=model_id,
