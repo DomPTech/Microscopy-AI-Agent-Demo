@@ -20,8 +20,8 @@ def run_test():
     # Connect
     print("\n2. Connecting Client...")
     # Give it a sec
-    time.sleep(2)
-    res = connect_client(host="localhost", port=9093)
+    time.sleep(1)
+    res = connect_client(host="127.0.0.1", port=9093)
     print(res)
     if "Failed" in res or "error" in res.lower():
         close_microscope()

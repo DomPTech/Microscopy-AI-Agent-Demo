@@ -40,26 +40,40 @@ def start_server(mode: str = "mock", port: int = 9093) -> str:
         env = os.environ.copy()
         env["PYTHONPATH"] = os.path.join(os.getcwd(), env.get("PYTHONPATH", ""))
 
-        # Start server as a background process
+        # Start server as a background process with unbuffered output
         SERVER_PROCESS = subprocess.Popen(
-            [sys.executable, abs_path, str(port)],
+            [sys.executable, "-u", abs_path, str(port)],
             cwd=os.getcwd(),
             env=env,
-            stdout=None, # Inherit for debug visibility or pipe if needed
-            stderr=None
+            stdout=subprocess.PIPE, 
+            stderr=subprocess.STDOUT,
+            text=True
         )
-        # Give it a moment to start
-        time.sleep(2)
-        if SERVER_PROCESS.poll() is not None:
-             out, err = SERVER_PROCESS.communicate() if SERVER_PROCESS.stdout else (b"", b"")
-             return f"Failed to start server. Exit code: {SERVER_PROCESS.returncode}."
-             
-        return f"Server started in {mode} mode on port {port}."
+        
+        start_time = time.time()
+        output_buffer = []
+        while time.time() - start_time < 20:
+            if SERVER_PROCESS.poll() is not None:
+                 rest_out, _ = SERVER_PROCESS.communicate()
+                 all_out = "".join(output_buffer) + (rest_out if rest_out else "")
+                 return f"Failed to start server. Exit code: {SERVER_PROCESS.returncode}. CMD: {[sys.executable, '-u', abs_path, str(port)]}. Output: {all_out}"
+            
+            line = SERVER_PROCESS.stdout.readline()
+            if line:
+                output_buffer.append(line)
+                if "Server ready" in line:
+                    return f"Server started in {mode} mode on port {port}."
+            else:
+                time.sleep(0.1)
+        
+        SERVER_PROCESS.terminate()
+        return f"Failed to start server: Timeout waiting for readiness signal. Captured Output: {''.join(output_buffer)}"
+
     except Exception as e:
         return f"Failed to start server: {e}"
 
 @tool
-def connect_client(host: str = "localhost", port: int = 9093) -> str:
+def connect_client(host: str = "127.0.0.1", port: int = 9093) -> str:
     """
     Connects the client to the microscope server using Pyro5.
     
@@ -71,8 +85,6 @@ def connect_client(host: str = "localhost", port: int = 9093) -> str:
     try:
         uri = f"PYRO:tem.server@{host}:{port}"
         PROXY = Pyro5.api.Proxy(uri)
-        # Test connection by calling a simple method
-        # get_instrument_status tends to be safe
         status = PROXY.get_instrument_status()
         return f"Connected successfully. Microscope Status: {status}"
     except Exception as e:
@@ -92,7 +104,7 @@ def adjust_magnification(amount: float) -> str:
         return "Error: Client not connected. Use connect_client first."
     
     try:
-        # smart_proxy.py doesn't have set_magnification directly but has device_settings or set_microscope_status.
+        # smart_proxy.py doesn't have set_magnification directly
         PROXY.set_microscope_status(parameter='magnification', value=amount)
         return f"Magnification set to {amount}"
     except Exception as e:
@@ -112,9 +124,6 @@ def capture_image(size: int = 512, dwell_time: float = 2e-6) -> str:
         return "Error: Client not connected. Use connect_client first."
         
     try:
-        # acquire_image returns (list, shape, dtype) tuple in base_proxy logic
-        # server_mock also returns this.
-        # device_name='ceta_camera' or 'wobbler_camera'
         result = PROXY.acquire_image(device_name='ceta_camera', size=size)
         
         if not result:

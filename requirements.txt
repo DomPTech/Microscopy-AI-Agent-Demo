@@ -7,3 +7,10 @@ wikipedia-api
 twisted
 numpy
 Pyro5
+numba
+SciFiReaders
+sidpy
+scipy
+matplotlib
+scikit-image
+ase

@@ -1,12 +1,16 @@
 import Pyro5.api
 import numpy as np
 import logging
+import sys
+import os
 
-# Configure logging
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "DTMicroscope")))
+
+from DTMicroscope.base.dummy_mic import DummyMicroscope
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("MockServer")
 
-# For serialization (list, shape, dtype) tuple as used in base_proxy
 def serialize(array):
     array_list = array.tolist()
     dtype = str(array.dtype)
@@ -15,6 +19,7 @@ def serialize(array):
 @Pyro5.api.expose
 class TEMServer(object):
     def __init__(self):
+        self.microscope = DummyMicroscope()
         self.detectors = {
             'wobbler_camera': {'size': 512, 'exposure': 0.1},
             'ceta_camera': {'size': 512, 'exposure': 0.1}
@@ -27,7 +32,8 @@ class TEMServer(object):
         return {
             'vacuum': 'Ready',
             'column_valve': 'Open',
-            'beam_current': 1.0e-9
+            'beam_current': 1.0e-9,
+            'source': self.microscope.name
         }
 
     def get_stage(self):
@@ -36,7 +42,6 @@ class TEMServer(object):
 
     def set_stage(self, stage_positions, relative=True):
         logger.info(f"set_stage pos={stage_positions} rel={relative}")
-        # Simplistic update map
         mapping = {'x':0, 'y':1, 'z':2, 'a':3, 'b':4}
         for k, v in stage_positions.items():
             if k in mapping:
@@ -49,12 +54,14 @@ class TEMServer(object):
 
     def acquire_image(self, device_name, **args):
         logger.info(f"acquire_image device={device_name} args={args}")
-        # Return random noise
         size = 512
         if device_name in self.detectors:
-            size = self.detectors[device_name].get('size', 512)
+            size_param = self.detectors[device_name].get('size', 512)
+            size = (size_param, size_param)
         
-        arr = np.random.randint(0, 255, (size, size), dtype=np.uint16)
+        arr = self.microscope.get_overview_image(size=size)
+        arr = arr.astype(np.uint16)
+        
         return serialize(arr)
         
     def set_microscope_status(self, parameter=None, value=None):
@@ -68,19 +75,16 @@ class TEMServer(object):
 
     def close(self):
         logger.info("Closing server")
-        # In Pyro, closing object doesn't stop daemon, but we can simulate shutdown if needed
-        # Or just return 1
         return 1
 
-def main(host="localhost", port=9093):
-    print(f"Mock Pyro5 Server running on {host}:{port}")
+def main(host="127.0.0.1", port=9093):
+    print(f"Mock Pyro5 Server (DTMicroscope) running on {host}:{port}", flush=True)
     daemon = Pyro5.api.Daemon(host=host, port=port)
     uri = daemon.register(TEMServer, objectId="tem.server")
-    print("Server ready. URI:", uri)
+    print("Server ready. URI:", uri, flush=True)
     daemon.requestLoop()
 
 if __name__ == "__main__":
-    import sys
     port = 9093
     if len(sys.argv) > 1:
         port = int(sys.argv[1])
