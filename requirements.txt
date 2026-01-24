@@ -14,4 +14,4 @@ scipy
 matplotlib
 scikit-image
 
--e ./asyncroscopy_repo
+-e asyncroscopy_repo

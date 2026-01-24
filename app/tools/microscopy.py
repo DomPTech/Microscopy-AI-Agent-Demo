@@ -27,30 +27,30 @@ def start_server(mode: str = "mock", port: int = 9093) -> str:
         return "Server is already running."
 
     # Using asyncroscopy package servers
+    # Derive path relative to this file's directory
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    
     if mode == "mock":
-        # Launch smart_proxy.py but with a twin server backend (simulated)
-        # Note: In a real scenario, we might need to launch two processes or one that handles both.
-        script_path = "asyncroscopy_repo/asyncroscopy/smart_proxy/smart_proxy.py"
+        script_path = os.path.join(base_dir, "asyncroscopy_repo/asyncroscopy/smart_proxy/smart_proxy.py")
     else:
-        script_path = "asyncroscopy_repo/asyncroscopy/smart_proxy/smart_proxy.py"
+        script_path = os.path.join(base_dir, "asyncroscopy_repo/asyncroscopy/smart_proxy/smart_proxy.py")
         
-    abs_path = os.path.abspath(script_path)
-    if not os.path.exists(abs_path):
-        return f"Error: Server script not found at {abs_path}"
+    if not os.path.exists(script_path):
+        return f"Error: Server script not found at {script_path}"
 
     try:
         # Prepare env
         env = os.environ.copy()
         # Add the repo and mocks to PYTHONPATH
-        repo_path = os.path.abspath("asyncroscopy_repo")
-        mocks_path = os.path.abspath("tests/mocks")
+        repo_path = os.path.join(base_dir, "asyncroscopy_repo")
+        mocks_path = os.path.join(base_dir, "tests/mocks")
         env["PYTHONPATH"] = f"{repo_path}{os.pathsep}{mocks_path}{os.pathsep}{env.get('PYTHONPATH', '')}"
 
         # Start server - smart_proxy.py from asyncroscopy repo
         # usage: smart_proxy.py [host] [port]
         SERVER_PROCESS = subprocess.Popen(
-            [sys.executable, "-u", abs_path, "127.0.0.1", str(port)],
-            cwd=os.getcwd(),
+            [sys.executable, "-u", script_path, "127.0.0.1", str(port)],
+            cwd=base_dir,
             env=env,
             stdout=subprocess.PIPE, 
             stderr=subprocess.STDOUT,
