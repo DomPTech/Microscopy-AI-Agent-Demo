@@ -13,4 +13,5 @@ sidpy
 scipy
 matplotlib
 scikit-image
-ase
+
+-e ./asyncroscopy_repo

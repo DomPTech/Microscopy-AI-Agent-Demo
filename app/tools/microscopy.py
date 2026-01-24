@@ -26,23 +26,30 @@ def start_server(mode: str = "mock", port: int = 9093) -> str:
     if SERVER_PROCESS and SERVER_PROCESS.poll() is None:
         return "Server is already running."
 
+    # Using asyncroscopy package servers
     if mode == "mock":
-        script_path = "app/services/smart_proxy/server_mock.py"
+        # Launch smart_proxy.py but with a twin server backend (simulated)
+        # Note: In a real scenario, we might need to launch two processes or one that handles both.
+        script_path = "asyncroscopy_repo/asyncroscopy/smart_proxy/smart_proxy.py"
     else:
-        script_path = "app/services/smart_proxy/server.py"
+        script_path = "asyncroscopy_repo/asyncroscopy/smart_proxy/smart_proxy.py"
         
     abs_path = os.path.abspath(script_path)
     if not os.path.exists(abs_path):
         return f"Error: Server script not found at {abs_path}"
 
     try:
-        # Prepare env with CWD in PYTHONPATH
+        # Prepare env
         env = os.environ.copy()
-        env["PYTHONPATH"] = os.path.join(os.getcwd(), env.get("PYTHONPATH", ""))
+        # Add the repo and mocks to PYTHONPATH
+        repo_path = os.path.abspath("asyncroscopy_repo")
+        mocks_path = os.path.abspath("tests/mocks")
+        env["PYTHONPATH"] = f"{repo_path}{os.pathsep}{mocks_path}{os.pathsep}{env.get('PYTHONPATH', '')}"
 
-        # Start server as a background process with unbuffered output
+        # Start server - smart_proxy.py from asyncroscopy repo
+        # usage: smart_proxy.py [host] [port]
         SERVER_PROCESS = subprocess.Popen(
-            [sys.executable, "-u", abs_path, str(port)],
+            [sys.executable, "-u", abs_path, "127.0.0.1", str(port)],
             cwd=os.getcwd(),
             env=env,
             stdout=subprocess.PIPE, 
@@ -52,22 +59,22 @@ def start_server(mode: str = "mock", port: int = 9093) -> str:
         
         start_time = time.time()
         output_buffer = []
-        while time.time() - start_time < 20:
+        while time.time() - start_time < 30:
             if SERVER_PROCESS.poll() is not None:
                  rest_out, _ = SERVER_PROCESS.communicate()
                  all_out = "".join(output_buffer) + (rest_out if rest_out else "")
-                 return f"Failed to start server. Exit code: {SERVER_PROCESS.returncode}. CMD: {[sys.executable, '-u', abs_path, str(port)]}. Output: {all_out}"
+                 return f"Failed to start server. Exit code: {SERVER_PROCESS.returncode}. Output: {all_out}"
             
             line = SERVER_PROCESS.stdout.readline()
             if line:
                 output_buffer.append(line)
-                if "Server ready" in line:
+                if "Server is ready" in line:
                     return f"Server started in {mode} mode on port {port}."
             else:
                 time.sleep(0.1)
         
         SERVER_PROCESS.terminate()
-        return f"Failed to start server: Timeout waiting for readiness signal. Captured Output: {''.join(output_buffer)}"
+        return f"Failed to start server: Timeout. Captured Output: {''.join(output_buffer)}"
 
     except Exception as e:
         return f"Failed to start server: {e}"
@@ -78,15 +85,20 @@ def connect_client(host: str = "127.0.0.1", port: int = 9093) -> str:
     Connects the client to the microscope server using Pyro5.
     
     Args:
-        host: Server host.
-        port: Server port.
+        host: Server host (default "127.0.0.1").
+        port: Server port (default 9093).
     """
     global PROXY
     try:
         uri = f"PYRO:tem.server@{host}:{port}"
         PROXY = Pyro5.api.Proxy(uri)
-        status = PROXY.get_instrument_status()
-        return f"Connected successfully. Microscope Status: {status}"
+        # Check if it responds
+        try:
+            status = PROXY.get_instrument_status()
+            return f"Connected successfully. Microscope Status: {status}"
+        except:
+             # If it doesn't respond immediately, it might be setting up
+             return f"Connected to {uri}. (Status check failed, but proxy created)"
     except Exception as e:
         PROXY = None
         return f"Connection error: {e}"
@@ -101,10 +113,9 @@ def adjust_magnification(amount: float) -> str:
     """
     global PROXY
     if not PROXY:
-        return "Error: Client not connected. Use connect_client first."
+        return "Error: Client not connected."
     
     try:
-        # smart_proxy.py doesn't have set_magnification directly
         PROXY.set_microscope_status(parameter='magnification', value=amount)
         return f"Magnification set to {amount}"
     except Exception as e:
@@ -113,7 +124,7 @@ def adjust_magnification(amount: float) -> str:
 @tool
 def capture_image(size: int = 512, dwell_time: float = 2e-6) -> str:
     """
-    Captures an image from the current microscope view.
+    Captures an image and saves it.
     
     Args:
         size: Image size (width/height).
@@ -121,10 +132,11 @@ def capture_image(size: int = 512, dwell_time: float = 2e-6) -> str:
     """
     global PROXY
     if not PROXY:
-        return "Error: Client not connected. Use connect_client first."
+        return "Error: Client not connected."
         
     try:
-        result = PROXY.acquire_image(device_name='ceta_camera', size=size)
+        # asyncroscopy smart_proxy returns (data_list, shape, dtype_str)
+        result = PROXY.acquire_image(device_name='ceta_camera') # size/dwell passed via device_settings in real asyncroscopy
         
         if not result:
             return "Failed to capture image (None returned)."

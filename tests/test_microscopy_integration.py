@@ -2,8 +2,7 @@ import time
 import os
 import sys
 
-# Ensure app is in path
-sys.path.insert(0, os.getcwd())
+# Ensure package is resolvable
 
 from app.tools.microscopy import start_server, connect_client, adjust_magnification, capture_image, close_microscope, get_stage_position
 
