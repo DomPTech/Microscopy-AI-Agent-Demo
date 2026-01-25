@@ -8,28 +8,37 @@ import Pyro5.api
 import Pyro5.errors
 import numpy as np
 from app.config import settings
+from enum import Enum
 
 # Global state for the client and server process
 CLIENT: Optional[object] = None # asyncroscopy.clients.notebook_client.NotebookClient
 SERVER_PROCESSES: Dict[str, subprocess.Popen] = {}
 
+# Define the microscope servers and their twins
+class MicroscopeServer(Enum):
+    Central = {
+        "server": "asyncroscopy.servers.protocols.central_server"
+    }
+    AS = {
+        "server": "asyncroscopy.servers.AS_server",
+        "twin": "asyncroscopy.servers.AS_server_twin"
+    }
+    Ceos = {
+        "server": "asyncroscopy.servers.Ceos_server",
+        "twin": "asyncroscopy.servers.Ceos_server_twin"
+    }
+
 @tool
-def start_server(mode: str = "mock", servers: Optional[list[str]] = None) -> str:
+def start_server(mode: str = "mock", servers: list[MicroscopeServer] = [MicroscopeServer.Central]) -> str:
     """
     Starts the microscope servers (Twisted architecture).
     
     Args:
         mode: "mock" for testing/simulation (uses twin servers), "real" for actual hardware.
-        servers: List of server modules to start. Defaults to Central, AS_Twin, and Ceos_Twin.
+        servers: List of server modules to start. Defaults to Central, and Ceos_Twin.
     """
     global SERVER_PROCESSES
     
-    if servers is None:
-        servers = [
-            "asyncroscopy.servers.protocols.central_server",
-            "asyncroscopy.servers.Ceos_server_twin"
-        ]
-
     # Check if any are already running
     running = [s for s, p in SERVER_PROCESSES.items() if p.poll() is None]
     if running:
@@ -42,17 +51,15 @@ def start_server(mode: str = "mock", servers: Optional[list[str]] = None) -> str
     env["PYTHONPATH"] = f"{repo_path}{os.pathsep}{env.get('PYTHONPATH', '')}"
 
     started = []
+    port = 9000
     try:
-        for module in servers:
-            # Central needs 9000, AS needs 9001, Ceos needs 9003 based on our routing defaults
-            port_map = {
-                "asyncroscopy.servers.protocols.central_server": 9000,
-                "asyncroscopy.servers.Ceos_server_twin": 9001
-            }
-            port = port_map.get(module, 0) # 0 lets OS pick random if not specified
+        for server in servers:
+            server_name = server.value.get("server")
+            module = server_name
+            if mode == "mock":
+                module = server.value.get("twin", server_name)
             cmd = [sys.executable, "-m", module]
-            if port:
-                cmd.append(str(port))
+            cmd.append(str(port))
 
             print(f"Starting server: {module} on port {port}")
             proc = subprocess.Popen(
@@ -67,6 +74,8 @@ def start_server(mode: str = "mock", servers: Optional[list[str]] = None) -> str
             started.append(module)
             # Give it a tiny bit to breathe
             time.sleep(1)
+
+            port += 1
         
         return f"Started servers: {', '.join(started)} in {mode} mode."
 

@@ -1,10 +1,7 @@
 import time
 import os
 import sys
-
-# Ensure package is resolvable
-
-from app.tools.microscopy import start_server, connect_client, adjust_magnification, capture_image, close_microscope, get_stage_position
+from app.tools.microscopy import MicroscopeServer, start_server, connect_client, adjust_magnification, capture_image, close_microscope, get_stage_position
 from app.config import settings
 
 def run_test():
@@ -12,7 +9,7 @@ def run_test():
     
     # Start server (Mock)
     print("\n1. Starting Mock Server...")
-    res = start_server(mode="mock")
+    res = start_server(mode="mock", servers=[MicroscopeServer.AS, MicroscopeServer.Ceos])
     print(res)
     if "Failed" in res:
         return
