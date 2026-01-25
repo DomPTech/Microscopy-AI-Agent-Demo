@@ -2,6 +2,7 @@ import subprocess
 import time
 import sys
 import os
+import socket
 from typing import Optional, Dict
 from smolagents import tool
 import Pyro5.api
@@ -14,18 +15,37 @@ from enum import Enum
 CLIENT: Optional[object] = None # asyncroscopy.clients.notebook_client.NotebookClient
 SERVER_PROCESSES: Dict[str, subprocess.Popen] = {}
 
+def _wait_for_port(host: str, port: int, timeout: float = 10.0) -> bool:
+    """Wait for a port to become available (server listening)."""
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(1)
+            sock.connect((host, port))
+            sock.close()
+            return True
+        except (socket.error, ConnectionRefusedError):
+            time.sleep(0.2)
+        except Exception:
+            time.sleep(0.2)
+    return False
+
 # Define the microscope servers and their twins
 class MicroscopeServer(Enum):
     Central = {
-        "server": "asyncroscopy.servers.protocols.central_server"
+        "server": "asyncroscopy.servers.protocols.central_server",
+        "port": 9000
     }
     AS = {
         "server": "asyncroscopy.servers.AS_server",
-        "twin": "asyncroscopy.servers.AS_server_twin"
+        "twin": "asyncroscopy.servers.AS_server_twin",
+        "port": 9001
     }
     Ceos = {
         "server": "asyncroscopy.servers.Ceos_server",
-        "twin": "asyncroscopy.servers.Ceos_server_twin"
+        "twin": "asyncroscopy.servers.Ceos_server_twin",
+        "port": 9003
     }
 
 @tool
@@ -45,17 +65,18 @@ def start_server(mode: str = "mock", servers: list[MicroscopeServer] = [Microsco
         return f"Servers already running: {', '.join(running)}"
 
     base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    repo_path = os.path.join(base_dir, "asyncroscopy_repo")
+    repo_path = os.path.join(base_dir, "external", "asyncroscopy")
     
     env = os.environ.copy()
     env["PYTHONPATH"] = f"{repo_path}{os.pathsep}{env.get('PYTHONPATH', '')}"
 
     started = []
-    port = 9000
+    ports_to_wait = []
     try:
         for server in servers:
             server_name = server.value.get("server")
             module = server_name
+            port = server.value.get("port")
             if mode == "mock":
                 module = server.value.get("twin", server_name)
             cmd = [sys.executable, "-m", module]
@@ -65,17 +86,19 @@ def start_server(mode: str = "mock", servers: list[MicroscopeServer] = [Microsco
             proc = subprocess.Popen(
                 cmd,
                 cwd=base_dir,
-                env=env,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True
+                env=env
             )
             SERVER_PROCESSES[module] = proc
             started.append(module)
-            # Give it a tiny bit to breathe
-            time.sleep(1)
-
+            ports_to_wait.append(port)
+            
             port += 1
+        
+        # Wait for all servers to be ready
+        print("Waiting for servers to be ready...")
+        for port in ports_to_wait:
+            if not _wait_for_port("localhost", port, timeout=10.0):
+                return f"Failed to start server on port {port} - timeout waiting for it to listen"
         
         return f"Started servers: {', '.join(started)} in {mode} mode."
 
@@ -83,23 +106,22 @@ def start_server(mode: str = "mock", servers: list[MicroscopeServer] = [Microsco
         return f"Failed to start servers: {e}"
 
 @tool
-def connect_client(host: str = "localhost", port: int = 9000, routing_table: Optional[dict] = None) -> str:
+def connect_client(host: str = "localhost", port: int = 9000) -> str:
     """
     Connects the client to the central server and sets up routing.
     
     Args:
         host: Central server host.
         port: Central server port.
-        routing_table: Dict mapping prefixes (AS, Ceos) to (host, port).
     """
     global CLIENT
     from asyncroscopy.clients.notebook_client import NotebookClient
     
-    if routing_table is None:
-        routing_table = {
-            "Central": ("localhost", 9000),
-            "Ceos": ("localhost", 9001)
-        }
+    routing_table = {
+        "Central": ("localhost", MicroscopeServer.Central.value.get("port")),
+        "AS": ("localhost", MicroscopeServer.AS.value.get("port")),
+        "Ceos": ("localhost", MicroscopeServer.Ceos.value.get("port"))
+    }
 
     try:
         CLIENT = NotebookClient.connect(host=host, port=port)

@@ -9,7 +9,7 @@ def run_test():
     
     # Start server (Mock)
     print("\n1. Starting Mock Server...")
-    res = start_server(mode="mock", servers=[MicroscopeServer.AS, MicroscopeServer.Ceos])
+    res = start_server(mode="mock", servers=[MicroscopeServer.Central, MicroscopeServer.AS, MicroscopeServer.Ceos])
     print(res)
     if "Failed" in res:
         return
