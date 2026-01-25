@@ -1,3 +1,3 @@
 [submodule "external/asyncroscopy"]
 	path = external/asyncroscopy
-	url = https://github.com/pycroscopy/asyncroscopy.git
+	url = git@github.com:DomPTech/asyncroscopy.git
