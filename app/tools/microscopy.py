@@ -55,8 +55,13 @@ def start_server(mode: str = "mock", servers: list[MicroscopeServer] = [Microsco
     
     Args:
         mode: "mock" for testing/simulation (uses twin servers), "real" for actual hardware.
-        servers: List of server modules to start. Defaults to Central, and Ceos_Twin.
+        servers: List of server modules to start. Available options:
+            - MicroscopeServer.Central: The main control server (Port 9000).
+            - MicroscopeServer.AS: The AS server or its twin (Port 9001).
+            - MicroscopeServer.Ceos: The Ceos server or its twin (Port 9003).
+            Defaults to [MicroscopeServer.Central].
     """
+
     global SERVER_PROCESSES
     
     # Check if any are already running
