@@ -49,7 +49,7 @@ class MicroscopeServer(Enum):
     }
 
 @tool
-def start_server(mode: str = "mock", servers: list[MicroscopeServer] = [MicroscopeServer.Central]) -> str:
+def start_server(mode: str = "mock", servers: Optional[list[MicroscopeServer]] = None) -> str:
     """
     Starts the microscope servers (Twisted architecture).
     
@@ -59,16 +59,13 @@ def start_server(mode: str = "mock", servers: list[MicroscopeServer] = [Microsco
             - MicroscopeServer.Central: The main control server (Port 9000).
             - MicroscopeServer.AS: The AS server or its twin (Port 9001).
             - MicroscopeServer.Ceos: The Ceos server or its twin (Port 9003).
-            Defaults to [MicroscopeServer.Central].
+            Defaults to starting all three [Central, AS, Ceos] if None.
     """
 
     global SERVER_PROCESSES
+    if servers is None:
+        servers = [MicroscopeServer.Central, MicroscopeServer.AS, MicroscopeServer.Ceos]
     
-    # Check if any are already running
-    running = [s for s, p in SERVER_PROCESSES.items() if p.poll() is None]
-    if running:
-        return f"Servers already running: {', '.join(running)}"
-
     base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     repo_path = os.path.join(base_dir, "external", "asyncroscopy")
     
@@ -77,6 +74,7 @@ def start_server(mode: str = "mock", servers: list[MicroscopeServer] = [Microsco
 
     started = []
     ports_to_wait = []
+    
     try:
         for server in servers:
             server_name = server.value.get("server")
@@ -84,28 +82,44 @@ def start_server(mode: str = "mock", servers: list[MicroscopeServer] = [Microsco
             port = server.value.get("port")
             if mode == "mock":
                 module = server.value.get("twin", server_name)
-            cmd = [sys.executable, "-m", module]
-            cmd.append(str(port))
+            
+            # Check if this specific module is already tracked and running
+            if module in SERVER_PROCESSES and SERVER_PROCESSES[module].poll() is None:
+                print(f"Server {module} already running (tracked).")
+                started.append(f"{module} (already running)")
+                continue
+
+            # Check if something is already listening on the port (might be an orphaned process)
+            if _wait_for_port("localhost", port, timeout=0.2):
+                print(f"Server port {port} already listening. Assuming it's the correct server.")
+                started.append(f"{module} (already listening)")
+                continue
+
+            cmd = [sys.executable, "-m", module, str(port)]
 
             print(f"Starting server: {module} on port {port}")
             proc = subprocess.Popen(
                 cmd,
                 cwd=base_dir,
-                env=env
+                env=env,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
             )
             SERVER_PROCESSES[module] = proc
             started.append(module)
             ports_to_wait.append(port)
-            
-            port += 1
         
-        # Wait for all servers to be ready
-        print("Waiting for servers to be ready...")
-        for port in ports_to_wait:
-            if not _wait_for_port("localhost", port, timeout=10.0):
-                return f"Failed to start server on port {port} - timeout waiting for it to listen"
+        if not started:
+            return "All requested servers are already running."
+
+        # Wait for newly started servers to be ready
+        if ports_to_wait:
+            print(f"Waiting for servers on ports {ports_to_wait} to be ready...")
+            for port in ports_to_wait:
+                if not _wait_for_port("localhost", port, timeout=10.0):
+                    return f"Failed to start server on port {port} - timeout waiting for it to listen"
         
-        return f"Started servers: {', '.join(started)} in {mode} mode."
+        return f"Servers status: {', '.join(started)} in {mode} mode."
 
     except Exception as e:
         return f"Failed to start servers: {e}"
@@ -135,11 +149,15 @@ def connect_client(host: str = "localhost", port: int = 9000) -> str:
         
         # Configure routing on the central server
         resp = CLIENT.send_command("Central", "set_routing_table", routing_table)
+        if isinstance(resp, str) and "ERROR" in resp:
+            return f"Failed to set routing table: {resp}"
         
         # Initialize AS server
-        CLIENT.send_command("AS", "connect_AS", {"host": "localhost", "port": 9001})
+        as_resp = CLIENT.send_command("AS", "connect_AS", {"host": "localhost", "port": 9001})
+        if isinstance(as_resp, str) and "ERROR" in as_resp:
+            return f"Failed to reach AS server: {as_resp}. Did you start all servers?"
         
-        return f"Connected successfully. Routing: {resp}"
+        return f"Connected successfully. Routing: {resp}, AS: {as_resp}"
     except Exception as e:
         CLIENT = None
         return f"Connection error: {e}"
