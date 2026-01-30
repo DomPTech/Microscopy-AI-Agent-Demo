@@ -5,6 +5,10 @@ from app.tools.microscopy import MicroscopeServer, start_server, connect_client,
 from app.config import settings
 
 def run_test():
+    settings.instrument_host = "localhost"
+    settings.instrument_port = 9001
+    settings.autoscript_port = 9001
+    
     print("--- Starting Integration Test ---")
     
     # Start server (Mock)
