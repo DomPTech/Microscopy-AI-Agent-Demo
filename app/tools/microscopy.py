@@ -139,7 +139,7 @@ def connect_client(host: str = "localhost", port: int = 9000) -> str:
     
     routing_table = {
         "Central": ("localhost", MicroscopeServer.Central.value.get("port")),
-        "AS": ("localhost", MicroscopeServer.AS.value.get("port")),
+        "AS": (settings.instrument_host, settings.autoscript_port),
         "Ceos": ("localhost", MicroscopeServer.Ceos.value.get("port"))
     }
 
