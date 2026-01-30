@@ -71,6 +71,7 @@ def start_server(mode: str = "mock", servers: Optional[list[MicroscopeServer]] =
     
     env = os.environ.copy()
     env["PYTHONPATH"] = f"{repo_path}{os.pathsep}{env.get('PYTHONPATH', '')}"
+    env["AUTOSCRIPT_PATH"] = settings.autoscript_path
 
     started = []
     ports_to_wait = []
@@ -153,7 +154,10 @@ def connect_client(host: str = "localhost", port: int = 9000) -> str:
             return f"Failed to set routing table: {resp}"
         
         # Initialize AS server
-        as_resp = CLIENT.send_command("AS", "connect_AS", {"host": "localhost", "port": 9001})
+        as_resp = CLIENT.send_command("AS", "connect_AS", {
+            "host": settings.instrument_host, 
+            "port": settings.instrument_port
+        })
         if isinstance(as_resp, str) and "ERROR" in as_resp:
             return f"Failed to reach AS server: {as_resp}. Did you start all servers?"
         

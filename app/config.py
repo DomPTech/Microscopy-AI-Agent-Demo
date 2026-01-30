@@ -21,8 +21,16 @@ class MicroscopeSettings(BaseSettings):
     
     # Paths and Networks
     server_host: str = Field("127.0.0.1", description="Hostname for the asyncroscopy server")
-    server_port: int = Field(9093, description="Port for the asyncroscopy server")
+    server_port: int = Field(9000, description="Port for the central asyncroscopy server")
     
+    # AutoScript / Hardware Paths
+    autoscript_path: str = Field(
+        "/Users/austin/Desktop/Projects/autoscript_tem_microscope_client", 
+        description="Local path to the autoscript_tem_microscope_client library"
+    )
+    instrument_host: str = Field("localhost", description="IP/Hostname of the microscope instrument PC")
+    instrument_port: int = Field(9001, description="Port the AutoScript server is listening on (AutoScript default is often 9007, check your setup)")
+
     # Simulation Mode
     sim_mode: bool = Field(True, description="Enable dry-run/simulator mode by default")
 
