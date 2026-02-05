@@ -16,4 +16,7 @@ scikit-image
 pydantic
 pydantic-settings
 pytest
+fastapi
+uvicorn
+python-multipart
 -e external/asyncroscopy

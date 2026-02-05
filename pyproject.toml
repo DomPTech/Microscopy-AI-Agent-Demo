@@ -24,6 +24,9 @@ dependencies = [
     "pydantic",
     "pydantic-settings",
     "pytest",
+    "fastapi",
+    "uvicorn",
+    "python-multipart",
     "asyncroscopy @ file://./external/asyncroscopy",
 ]
 
