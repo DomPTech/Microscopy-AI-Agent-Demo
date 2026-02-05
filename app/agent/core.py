@@ -1,6 +1,6 @@
 import torch
 from smolagents import CodeAgent, TransformersModel, DuckDuckGoSearchTool
-from app.tools.microscopy import adjust_magnification, capture_image, close_microscope, start_server, connect_client, get_stage_position
+from app.tools.microscopy import TOOLS
 from app.utils.helpers import get_total_ram_gb
 
 class Agent:
@@ -38,23 +38,32 @@ class Agent:
         )
         # Full tool suite for the microscopy agent
         self.agent = CodeAgent(
-            tools=[
-                # DuckDuckGoSearchTool(), 
-                adjust_magnification,
-                capture_image,
-                close_microscope,
-                start_server,
-                connect_client,
-                get_stage_position,
-            ], 
+            tools=TOOLS, 
             model=self.model, 
-            additional_authorized_imports=["app.tools.microscopy", "numpy", "time", "os", "scipy", "matplotlib", "skimage"],
+            additional_authorized_imports=[
+                "app.tools.microscopy", "app.config", 
+                "numpy", "time", "os", "scipy", "matplotlib", "skimage"
+            ],
             instructions="""
             You are an expert microscopy AI assistant. 
-            You can control the microscope by starting the server, connecting the client, and then using tools to adjust magnification, capture images, and move the stage.
-            When starting the server, you should typically use mode='mock' for simulations.
-            Available servers are MicroscopeServer.Central, MicroscopeServer.AS, and MicroscopeServer.Ceos, and MicroscopeServer can be imported from app.tools.microscopy.
-            Always remember to close the microscope connection when the task is complete.
+            You can control the microscope by starting the server, connecting the client, and then using tools to:
+            - Adjust magnification and capture images.
+            - Move the stage and check status.
+            - Control the electron beam (blank/unblank, place beam).
+            - Calibrate and set screen current.
+            
+            Guidelines:
+            1. Use 'app.config.settings' for configuration:
+               - Import 'settings' from 'app.config'.
+               - Use 'settings.server_host' and 'settings.server_port' for connections.
+               - Use 'settings.autoscript_path' if needed for server startup.
+            2. Reliability:
+               - Always wait at least 1 second (`time.sleep(1)`) after starting servers before attempting to connect the client.
+               - Use mode='mock' for simulations unless 'real' is explicitly requested.
+            3. Housekeeping:
+               - Always call 'close_microscope()' when the task is finished.
+            
+            Available servers: MicroscopeServer.Central, MicroscopeServer.AS, MicroscopeServer.Ceos.
             """,
             stream_outputs=True
         )

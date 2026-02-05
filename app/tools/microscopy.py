@@ -126,16 +126,23 @@ def start_server(mode: str = "mock", servers: Optional[list[MicroscopeServer]] =
         return f"Failed to start servers: {e}"
 
 @tool
-def connect_client(host: str = "localhost", port: int = 9000) -> str:
+def connect_client(host: Optional[str] = None, port: Optional[int] = None) -> str:
     """
     Connects the client to the central server and sets up routing.
     
     Args:
-        host: Central server host.
-        port: Central server port.
+        host: Central server host (defaults to settings.server_host).
+        port: Central server port (defaults to settings.server_port).
     """
     global CLIENT
     from asyncroscopy.clients.notebook_client import NotebookClient
+
+    # Use settings defaults if not provided
+    host = host or settings.server_host
+    port = port or settings.server_port
+
+    # Safety delay to ensure servers are ready
+    time.sleep(1)
     
     routing_table = {
         "Central": ("localhost", MicroscopeServer.Central.value.get("port")),
@@ -373,3 +380,19 @@ def get_microscope_status(destination: str = "AS") -> str:
         return f"Microscope Status: {resp}"
     except Exception as e:
         return f"Error getting status: {e}"
+
+# Collection of all tools for the agent
+TOOLS = [
+    adjust_magnification,
+    capture_image,
+    close_microscope,
+    start_server,
+    connect_client,
+    get_stage_position,
+    calibrate_screen_current,
+    set_screen_current,
+    place_beam,
+    blank_beam,
+    unblank_beam,
+    get_microscope_status,
+]
