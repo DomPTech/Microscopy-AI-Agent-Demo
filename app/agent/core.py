@@ -1,5 +1,8 @@
 import torch
 from smolagents import CodeAgent, TransformersModel, DuckDuckGoSearchTool
+from smolagents.agents import ActionOutput
+from smolagents.memory import FinalAnswerStep
+from smolagents.models import ChatMessageStreamDelta
 from app.tools.microscopy import TOOLS
 from app.utils.helpers import get_total_ram_gb
 
@@ -74,3 +77,20 @@ class Agent:
         """
         response = self.agent.run(query)
         return response
+
+    def stream_chat(self, query: str):
+        """
+        Stream user input processing as a sequence of events.
+        Yields dicts with keys: type ("delta"|"final") and content.
+        """
+        final_output = None
+        for event in self.agent.run(query, stream=True):
+            if isinstance(event, ChatMessageStreamDelta) and event.content:
+                yield {"type": "delta", "content": event.content}
+            elif isinstance(event, ActionOutput) and event.is_final_answer:
+                final_output = event.output
+            elif isinstance(event, FinalAnswerStep):
+                final_output = event.output
+
+        if final_output is not None:
+            yield {"type": "final", "content": str(final_output)}
