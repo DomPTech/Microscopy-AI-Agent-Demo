@@ -402,6 +402,44 @@ def get_microscope_state(destination: str = "AS") -> Dict[str, Any]:
     except Exception as e:
         return {"error": str(e)}
 
+@tool
+def set_column_valve(state: str, destination: str = "AS") -> str:
+    """
+    Sets the state of the column valve.
+    
+    Args:
+        state: "open" or "closed".
+        destination: The server to send the command to (default 'AS').
+    """
+    global CLIENT
+    if not CLIENT:
+        return "Error: Client not connected."
+    
+    try:
+        resp = CLIENT.send_command(destination, "set_microscope_status", {"parameter": "column_valve", "value": state})
+        return f"Column valve command sent to {destination}: {resp}"
+    except Exception as e:
+        return f"Error setting column valve: {e}"
+
+@tool
+def set_optics_mode(mode: str, destination: str = "AS") -> str:
+    """
+    Sets the optical mode (TEM or STEM).
+    
+    Args:
+        mode: "TEM" or "STEM".
+        destination: The server to send the command to (default 'AS').
+    """
+    global CLIENT
+    if not CLIENT:
+        return "Error: Client not connected."
+    
+    try:
+        resp = CLIENT.send_command(destination, "set_microscope_status", {"parameter": "optics_mode", "value": mode})
+        return f"Optics mode command sent to {destination}: {resp}"
+    except Exception as e:
+        return f"Error setting optics mode: {e}"
+
 # Collection of all tools for the agent
 TOOLS = [
     adjust_magnification,
@@ -417,6 +455,8 @@ TOOLS = [
     unblank_beam,
     get_microscope_status,
     get_microscope_state,
+    set_column_valve,
+    set_optics_mode,
 ]
 
 # Experiment Framework Integration

@@ -108,6 +108,40 @@ def test_get_state():
     assert "status" in state
     assert "magnification" in state
     assert "beam_blanked" in state
+    assert "column_valve_open" in state
+    assert "optics_mode" in state
+
+def test_set_column_valve():
+    print("\n--- Testing: set_column_valve ---")
+    res = set_column_valve("open")
+    print(f"Result: {res}")
+    assert "Column valve command sent to AS" in res
+    assert "open" in res
+    
+    state = get_microscope_state()
+    assert state["column_valve_open"] is True
+    
+    res = set_column_valve("closed")
+    print(f"Result: {res}")
+    assert "closed" in res
+    state = get_microscope_state()
+    assert state["column_valve_open"] is False
+
+def test_set_optics_mode():
+    print("\n--- Testing: set_optics_mode ---")
+    res = set_optics_mode("STEM")
+    print(f"Result: {res}")
+    assert "Optics mode command sent to AS" in res
+    assert "STEM" in res
+    
+    state = get_microscope_state()
+    assert state["optics_mode"] == "STEM"
+    
+    res = set_optics_mode("TEM")
+    print(f"Result: {res}")
+    assert "TEM" in res
+    state = get_microscope_state()
+    assert state["optics_mode"] == "TEM"
 
 def test_submit_experiment_with_constraints():
     print("\n--- Testing: submit_experiment with constraints ---")
