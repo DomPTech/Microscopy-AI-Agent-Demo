@@ -3,7 +3,7 @@ import time
 import sys
 import os
 import socket
-from typing import Optional, Dict
+from typing import Optional, Dict, Any, Union
 from smolagents import tool
 import Pyro5.api
 import Pyro5.errors
@@ -146,7 +146,7 @@ def connect_client(host: Optional[str] = None, port: Optional[int] = None) -> st
     
     routing_table = {
         "Central": ("localhost", MicroscopeServer.Central.value.get("port")),
-        "AS": (settings.instrument_host, settings.autoscript_port),
+        "AS": ("localhost", MicroscopeServer.AS.value.get("port")),
         "Ceos": ("localhost", MicroscopeServer.Ceos.value.get("port"))
     }
 
@@ -376,10 +376,31 @@ def get_microscope_status(destination: str = "AS") -> str:
         return "Error: Client not connected."
     
     try:
-        resp = CLIENT.send_command(destination, "get_status")
-        return f"Microscope Status: {resp}"
+        return CLIENT.send_command(destination, "get_status")
     except Exception as e:
         return f"Error getting status: {e}"
+
+@tool
+def get_microscope_state(destination: str = "AS") -> Dict[str, Any]:
+    """
+    Returns the full state of the microscope as a dictionary of variables.
+    Use this for validating constraints or checking specific values.
+    
+    Args:
+        destination: The server to query (default 'AS').
+    """
+    global CLIENT
+    if not CLIENT:
+        return {"error": "Client not connected."}
+    
+    try:
+        state = CLIENT.send_command(destination, "get_state")
+        if isinstance(state, dict):
+            return state
+        # Fallback for older servers that don't have get_state
+        return {"status": CLIENT.send_command(destination, "get_status")}
+    except Exception as e:
+        return {"error": str(e)}
 
 # Collection of all tools for the agent
 TOOLS = [
@@ -395,4 +416,67 @@ TOOLS = [
     blank_beam,
     unblank_beam,
     get_microscope_status,
+    get_microscope_state,
 ]
+
+# Experiment Framework Integration
+from app.tools.experiment_framework import ExperimentFootprint, ExperimentExecutor, ExperimentAction, ExperimentConstraint, RewardMetric
+
+@tool
+def submit_experiment(experiment_design: Dict[str, Any]) -> str:
+    """
+    Submits a structured experiment to the autonomous scientist framework.
+    
+    This tool allows you to define a hypothesis as an 'Experimental Footprint' containing:
+    1. A sequence of actions.
+    2. Constraints to ensure safety/validity.
+    3. A reward metric to evaluate success.
+    
+    Args:
+        experiment_design: A dictionary matching the ExperimentFootprint structure. 
+                           Example:
+                           {
+                               "id": "exp_001",
+                               "description": "Optimize focus",
+                               "actions": [
+                                    {"name": "adjust_magnification", "params": {"amount": 5000}}
+                               ],
+                               "constraints": [],
+                               "observables": ["image"],
+                               "reward": {"metric_type": "image_entropy"}
+                           }
+    """
+    global TOOLS
+    
+    try:
+        # Parse the input dictionary into an ExperimentFootprint object
+        footprint = ExperimentFootprint(**experiment_design)
+        
+        # Create the executor with a map of available tools
+        tool_map = {t.name: t for t in TOOLS}
+        
+        executor = ExperimentExecutor(tool_map)
+        
+        if not CLIENT:
+            return "Error: Client not connected. Cannot execute experiment."
+
+        # Fetch full state for validation
+        current_state = get_microscope_state("AS")
+        
+        if "error" in current_state:
+            return f"Failed to validate experiment: could not fetch state. Error: {current_state['error']}"
+
+        violations = executor.validate_constraints(footprint, current_state)
+        if violations:
+            return f"Experiment rejected due to constraints: {violations}"
+            
+        # Execute
+        results = executor.execute(footprint)
+        
+        return f"Experiment '{footprint.id}' completed.\\nSuccess: {results['success']}\\nReward: {results['reward']}\\nLog: {results['log']}"
+        
+    except Exception as e:
+        return f"Failed to submit experiment: {e}"
+
+# Add the new tool to the exported list
+TOOLS.append(submit_experiment)

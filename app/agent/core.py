@@ -54,6 +54,7 @@ class Agent:
             - Move the stage and check status.
             - Control the electron beam (blank/unblank, place beam).
             - Calibrate and set screen current.
+            - And more.
             
             Guidelines:
             1. Use 'app.config.settings' for configuration:
@@ -65,6 +66,7 @@ class Agent:
                - Use mode='mock' for simulations unless 'real' is explicitly requested.
             3. Housekeeping:
                - Always call 'close_microscope()' when the task is finished.
+            4. Decide whether or not to construct structured Experiments or just execute tools quickly.
             
             Available servers: MicroscopeServer.Central, MicroscopeServer.AS, MicroscopeServer.Ceos.
             """,

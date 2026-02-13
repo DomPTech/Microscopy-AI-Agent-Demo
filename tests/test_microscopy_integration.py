@@ -100,6 +100,62 @@ def test_unblank_beam_continuous():
     assert "Unblank beam response" in res
     assert "unblanked" in res.lower()
 
+def test_get_state():
+    print("\n--- Testing: get_microscope_state ---")
+    state = get_microscope_state()
+    print(f"Result: {state}")
+    assert isinstance(state, dict)
+    assert "status" in state
+    assert "magnification" in state
+    assert "beam_blanked" in state
+
+def test_submit_experiment_with_constraints():
+    print("\n--- Testing: submit_experiment with constraints ---")
+    
+    # First set a known state
+    adjust_magnification(5000.0)
+    
+    experiment = {
+        "id": "exp_test_001",
+        "description": "Test constraints",
+        "actions": [
+            {"name": "capture_image", "params": {"detector": "Ceta"}}
+        ],
+        "constraints": [
+            {"parameter": "magnification", "min_value": 2000.0}
+        ],
+        "observables": ["image"],
+        "reward": {"metric_type": "image_entropy"}
+    }
+    
+    res = submit_experiment(experiment)
+    print(f"Result: {res}")
+    assert "completed" in res
+    assert "Success: True" in res
+
+def test_submit_experiment_constraint_violation():
+    print("\n--- Testing: submit_experiment constraint violation ---")
+    
+    # Set low magnification
+    adjust_magnification(100.0)
+    
+    experiment = {
+        "id": "exp_test_fail",
+        "description": "Test constraint failure",
+        "actions": [
+            {"name": "capture_image", "params": {"detector": "Ceta"}}
+        ],
+        "constraints": [
+            {"parameter": "magnification", "min_value": 5000.0}
+        ],
+        "observables": ["image"],
+        "reward": {"metric_type": "image_entropy"}
+    }
+    
+    res = submit_experiment(experiment)
+    print(f"Result: {res}")
+    assert "rejected due to constraints" in res
+
 if __name__ == "__main__":
     # Fallback for running without pytest
     pytest.main([__file__])
