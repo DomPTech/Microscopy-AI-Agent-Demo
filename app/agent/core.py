@@ -1,3 +1,17 @@
+import sys
+from pathlib import Path
+
+# Ensure project root is on sys.path for reliable imports
+_PROJECT_ROOT = None
+for _parent in Path(__file__).resolve().parents:
+    if (_parent / "pyproject.toml").exists():
+        _PROJECT_ROOT = _parent
+        break
+if _PROJECT_ROOT is None:
+    _PROJECT_ROOT = Path.cwd()
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+
 import torch
 from smolagents import CodeAgent, TransformersModel, DuckDuckGoSearchTool
 from smolagents.agents import ActionOutput
@@ -55,6 +69,12 @@ class Agent:
             - Control the electron beam (blank/unblank, place beam).
             - Calibrate and set screen current.
             - And more.
+            
+            Default context & assumptions (use these unless the user specifies otherwise):
+            - Always start servers and connect to the client when asked to do anything on the microscope.
+            - If no server list is provided, start ALL servers: MicroscopeServer.Central, MicroscopeServer.AS, MicroscopeServer.Ceos.
+            - After starting servers, wait 1 second, then connect the client using settings.
+            - Use mode='mock' unless the user explicitly requests real hardware.
             
             Guidelines:
             1. Use 'app.config.settings' for configuration:
