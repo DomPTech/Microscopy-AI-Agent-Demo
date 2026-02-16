@@ -284,7 +284,7 @@ def calibrate_screen_current(destination: str = "AS") -> str:
         return f"Error calibrating screen current: {e}"
 
 @tool
-def set_screen_current(current_pa: float, destination: str = "AS") -> str:
+def set_beam_current(current_pa: float, destination: str = "AS") -> str:
     """
     Sets the screen current (via gun lens). Must have screen current calibrated first.
     
@@ -297,8 +297,9 @@ def set_screen_current(current_pa: float, destination: str = "AS") -> str:
         return "Error: Client not connected."
     
     try:
-        resp = CLIENT.send_command(destination, "set_current", {"current": current_pa})
+        resp = CLIENT.send_command(destination, "set_beam_current", {"current": current_pa})
         return f"Set current response: {resp}"
+
     except Exception as e:
         return f"Error setting current: {e}"
 
@@ -440,6 +441,91 @@ def set_optics_mode(mode: str, destination: str = "AS") -> str:
     except Exception as e:
         return f"Error setting optics mode: {e}"
 
+@tool
+def discover_commands(destination: str = "AS") -> str:
+    """
+    Discovers available commands on a microscope server. 
+    None of these commands are to be used directly, only for display purposes.
+    
+    Args:
+        destination: The server to query (default 'AS').
+    """
+    global CLIENT
+    if not CLIENT:
+        return "Error: Client not connected."
+    
+    try:
+        cmds = CLIENT.send_command(destination, "discover_commands")
+        return str(cmds)
+    except Exception as e:
+        return f"Error discovering commands: {e}"
+
+@tool
+def get_ceos_info() -> str:
+    """
+    Gets information from the CEOS server.
+    """
+    global CLIENT
+    if not CLIENT:
+        return "Error: Client not connected."
+    
+    try:
+        return CLIENT.send_command("Ceos", "getInfo")
+    except Exception as e:
+        return f"Error getting CEOS info: {e}"
+
+@tool
+def tune_C1A1(destination: str = "AS") -> str:
+    """
+    Tunes the C1 and A1 aberrations.
+    
+    Args:
+        destination: The server to send the command to (default 'AS').
+    """
+    global CLIENT
+    if not CLIENT:
+        return "Error: Client not connected."
+    
+    try:
+        return CLIENT.send_command(destination, "tune_C1A1")
+    except Exception as e:
+        return f"Error tuning C1A1: {e}"
+
+@tool
+def acquire_tableau(tab_type: str = "Fast", angle: float = 18.0) -> Any:
+    """
+    Acquires a tableau from the CEOS server.
+    
+    Args:
+        tab_type: Type of tableau (e.g., 'Fast').
+        angle: Angle for the tableau.
+    """
+    global CLIENT
+    if not CLIENT:
+        return "Error: Client not connected."
+    
+    try:
+        return CLIENT.send_command("Ceos", "acquireTableau", {"tabType": tab_type, "angle": angle})
+    except Exception as e:
+        return f"Error acquiring tableau: {e}"
+
+@tool
+def get_atom_count(destination: str = "AS") -> str:
+    """
+    Returns the current atom count monitored by the server.
+    
+    Args:
+        destination: The server to query (default 'AS').
+    """
+    global CLIENT
+    if not CLIENT:
+        return "Error: Client not connected."
+    
+    try:
+        return CLIENT.send_command(destination, "get_atom_count")
+    except Exception as e:
+        return f"Error getting atom count: {e}"
+
 # Collection of all tools for the agent
 TOOLS = [
     adjust_magnification,
@@ -449,7 +535,7 @@ TOOLS = [
     connect_client,
     get_stage_position,
     calibrate_screen_current,
-    set_screen_current,
+    set_beam_current,
     place_beam,
     blank_beam,
     unblank_beam,
@@ -457,6 +543,11 @@ TOOLS = [
     get_microscope_state,
     set_column_valve,
     set_optics_mode,
+    discover_commands,
+    get_ceos_info,
+    tune_C1A1,
+    acquire_tableau,
+    get_atom_count,
 ]
 
 # Experiment Framework Integration

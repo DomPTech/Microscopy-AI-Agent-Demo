@@ -64,9 +64,9 @@ def test_calibrate_screen_current():
     assert "Screen current calibration" in res
     assert "calibrated" in res.lower()
 
-def test_set_screen_current():
-    print("\n--- Testing: set_screen_current ---")
-    res = set_screen_current(150.0)
+def test_set_beam_current():
+    print("\n--- Testing: set_beam_current ---")
+    res = set_beam_current(150.0)
     print(f"Result: {res}")
     assert "Set current response" in res
     assert "150.0 pA" in res

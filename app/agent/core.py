@@ -20,6 +20,19 @@ from smolagents.models import ChatMessageStreamDelta
 from app.tools.microscopy import TOOLS, MicroscopeServer
 from app.utils.helpers import get_total_ram_gb
 from app.agent.supervised_executor import SupervisedExecutor
+try:
+    import pyTEMlib.probe_tools as pt
+except ImportError:
+    pt = None
+import numpy as np
+from app.tools import microscopy
+
+class MicroscopeClientProxy:
+    """Proxy to forward calls to the active global CLIENT instance."""
+    def __getattr__(self, name):
+        if microscopy.CLIENT is None:
+             raise RuntimeError("Microscope client is not connected. Please call 'connect_client()' first.")
+        return getattr(microscopy.CLIENT, name)
 
 class Agent:
     def __init__(self, model_id: str = "Auto"):
@@ -102,6 +115,9 @@ class Agent:
         try:
             self.agent.python_executor.send_variables({
                 "MicroscopeServer": MicroscopeServer,
+                "tem": MicroscopeClientProxy(),
+                "pt": pt,
+                "np": np
             })
         except Exception:
             # Non-fatal: some executors may not support variable injection
