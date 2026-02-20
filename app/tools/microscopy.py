@@ -50,14 +50,14 @@ class MicroscopeServer(Enum):
     }
 
 @tool
-def start_server(mode: str = "mock", servers: Optional[list[MicroscopeServer]] = None) -> str:
+def start_server(mode: str = "mock", servers: Optional[list[Union[str, MicroscopeServer]]] = None) -> str:
     """
     Starts the microscope servers (Twisted architecture).
     
     Args:
         mode: "mock" for testing/simulation (uses twin servers), "real" for actual hardware.
-        servers: List of server modules to start (MicroscopeServer Enum constants).
-            Example: [MicroscopeServer.Central, MicroscopeServer.AS]. Available options:
+        servers: List of server modules to start. Can be Enum constants or strings.
+            Example: ["MicroscopeServer.Central", "AS"]. Available options:
             - MicroscopeServer.Central: The main control server (Port 9000).
             - MicroscopeServer.AS: The AS server or its twin (Port 9001).
             - MicroscopeServer.Ceos: The Ceos server or its twin (Port 9003).
@@ -67,6 +67,20 @@ def start_server(mode: str = "mock", servers: Optional[list[MicroscopeServer]] =
     global SERVER_PROCESSES
     if servers is None:
         servers = [MicroscopeServer.Central, MicroscopeServer.AS, MicroscopeServer.Ceos]
+    else:
+        parsed_servers = []
+        for s in servers:
+            if isinstance(s, MicroscopeServer):
+                parsed_servers.append(s)
+            elif isinstance(s, str):
+                name = s.split('.')[-1] if '.' in s else s
+                try:
+                    parsed_servers.append(MicroscopeServer[name])
+                except KeyError:
+                    return f"Invalid server name: {s}. Valid options: {[e.name for e in MicroscopeServer]}"
+            else:
+                return f"Invalid type for server: {type(s)}. Must be string or MicroscopeServer enum."
+        servers = parsed_servers
     
     base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     repo_path = os.path.join(base_dir, "external", "asyncroscopy")
